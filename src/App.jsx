@@ -9,6 +9,7 @@ import VoiceInterface from './components/VoiceInterface'
 import CollaborationHub from './components/CollaborationHub'
 import Advanced3DVisualization from './components/Advanced3DVisualization'
 import AdvancedAnalyticsDashboard from './components/AdvancedAnalyticsDashboard'
+import DemoShowcase from './components/DemoShowcase'
 import { generateDetailedComparison, generateContextualRecommendation } from './utils/comparisonEngine'
 
 function App() {
@@ -17,8 +18,10 @@ function App() {
   const [history, setHistory] = useState([])
   const [aiAnalysis, setAiAnalysis] = useState(null)
   const [activeTab, setActiveTab] = useState('analysis') // analysis, collaboration, 3d
+  const [showDemo, setShowDemo] = useState(true) // Show demo by default
 
   const handleComparisonSubmit = async (formData) => {
+    setShowDemo(false) // Hide demo when starting comparison
     setLoading(true)
     setAiAnalysis(null)
     
@@ -74,6 +77,7 @@ function App() {
       case 'new':
         setComparison(null)
         setAiAnalysis(null)
+        setShowDemo(true) // Show demo again
         break
       default:
         console.log('Voice command:', command)
@@ -87,6 +91,10 @@ function App() {
   const handle3DInteraction = (type, data) => {
     console.log('3D Interaction:', type, data)
     // Handle 3D visualization interactions
+  }
+
+  const handleDemoStart = (demoData) => {
+    handleComparisonSubmit(demoData)
   }
 
   return (
@@ -105,7 +113,9 @@ function App() {
       
       {!loading && (
         <div className="main-content">
-          {!comparison ? (
+          {showDemo && !comparison ? (
+            <DemoShowcase onStartDemo={handleDemoStart} />
+          ) : !comparison ? (
             <div className="input-section">
               <ComparisonForm 
                 onSubmit={handleComparisonSubmit} 
@@ -205,9 +215,16 @@ function App() {
                     setComparison(null)
                     setAiAnalysis(null)
                     setActiveTab('analysis')
+                    setShowDemo(true)
                   }}
                 >
                   🆕 New Comparison
+                </button>
+                <button 
+                  className="action-btn secondary"
+                  onClick={() => setShowDemo(true)}
+                >
+                  🎬 Show Demo
                 </button>
                 <button 
                   className="action-btn secondary"
