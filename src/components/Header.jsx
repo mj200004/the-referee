@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Scale, Sparkles, Zap, Brain, Users, Mic, Eye, Cpu, Database, Cloud, Code, Terminal, Wifi } from 'lucide-react'
 
 const Header = () => {
