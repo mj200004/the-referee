@@ -177,3 +177,4 @@ Built for the **AI for Bharat** hackathon, demonstrating how AI tools like Kiro 
 - **GitHub Repository**: [The Referee](https://github.com/mj200004/the-referee)
 - **Technical Blog Post**: [Building The Referee with Kiro AI](blog-post.md)
 - **Live Demo**: [Try The Referee](https://mj200004.github.io/the-referee)
+- http://localhost:3000/the-referee/
