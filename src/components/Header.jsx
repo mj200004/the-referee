@@ -208,13 +208,15 @@ const Header = () => {
         <div className="public-demo-banner">
           <div className="demo-badge">
             <Wifi size={16} />
-            <span>🌐 LIVE PUBLIC DEMO</span>
+            <span>🚀 DEPLOYMENT IN PROGRESS</span>
           </div>
           <div className="demo-url">
-            <strong>https://mj200004.github.io/the-referee/</strong>
+            <strong>GitHub Repository: https://github.com/mj200004/the-referee</strong>
           </div>
           <div className="demo-description">
-            Experience all features live - No installation required!
+            Live demo will be available at: https://mj200004.github.io/the-referee/
+            <br />
+            <small>GitHub Pages deployment is processing. You can clone and run locally with: npm install && npm run dev</small>
           </div>
         </div>
       </div>
