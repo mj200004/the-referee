@@ -1,294 +1,156 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { Maximize2, RotateCcw, Settings, Download } from 'lucide-react'
+import { Maximize2, RotateCcw, Settings, Download, Play, Pause } from 'lucide-react'
 
 const Advanced3DVisualization = ({ comparison, onInteraction }) => {
-  const canvasRef = useRef(null)
+  const containerRef = useRef(null)
   const animationRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState('sphere') // sphere, network, matrix
   const [isAnimating, setIsAnimating] = useState(true)
   const [selectedNode, setSelectedNode] = useState(null)
+  const [rotation, setRotation] = useState(0)
 
   useEffect(() => {
-    if (!comparison || !canvasRef.current) return
+    if (!comparison || !containerRef.current) return
 
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    
-    // Set canvas size
-    const resizeCanvas = () => {
-      const rect = canvas.parentElement.getBoundingClientRect()
-      canvas.width = rect.width * window.devicePixelRatio
-      canvas.height = rect.height * window.devicePixelRatio
-      canvas.style.width = rect.width + 'px'
-      canvas.style.height = rect.height + 'px'
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
-    }
-    
-    resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
-    
-    // 3D visualization data
-    const nodes = [
-      // Main options
-      { 
-        id: 'option1', 
-        label: comparison.options[0], 
-        x: -100, y: 0, z: 0, 
-        size: 30, 
-        color: '#667eea',
-        type: 'option'
-      },
-      { 
-        id: 'option2', 
-        label: comparison.options[1], 
-        x: 100, y: 0, z: 0, 
-        size: 30, 
-        color: '#764ba2',
-        type: 'option'
-      },
-      // Criteria nodes
-      ...comparison.analysis.map((item, index) => ({
-        id: `criteria-${index}`,
-        label: item.criterion,
-        x: Math.cos(index * 2 * Math.PI / comparison.analysis.length) * 150,
-        y: Math.sin(index * 2 * Math.PI / comparison.analysis.length) * 150,
-        z: (index % 2) * 50 - 25,
-        size: 15 + (item.option1Score + item.option2Score),
-        color: `hsl(${200 + index * 30}, 70%, 60%)`,
-        type: 'criteria',
-        scores: [item.option1Score, item.option2Score]
-      }))
-    ]
-    
-    const connections = []
-    comparison.analysis.forEach((item, index) => {
-      connections.push({
-        from: 'option1',
-        to: `criteria-${index}`,
-        strength: item.option1Score / 5,
-        color: '#667eea'
-      })
-      connections.push({
-        from: 'option2',
-        to: `criteria-${index}`,
-        strength: item.option2Score / 5,
-        color: '#764ba2'
-      })
-    })
-    
-    let rotation = { x: 0, y: 0, z: 0 }
-    let mousePos = { x: 0, y: 0 }
-    let isDragging = false
-    
-    // Mouse interaction
-    const handleMouseMove = (e) => {
-      const rect = canvas.getBoundingClientRect()
-      mousePos.x = e.clientX - rect.left
-      mousePos.y = e.clientY - rect.top
-      
-      if (isDragging) {
-        rotation.y += (e.movementX || 0) * 0.01
-        rotation.x += (e.movementY || 0) * 0.01
-      }
-    }
-    
-    const handleMouseDown = (e) => {
-      isDragging = true
-      canvas.style.cursor = 'grabbing'
-    }
-    
-    const handleMouseUp = () => {
-      isDragging = false
-      canvas.style.cursor = 'grab'
-    }
-    
-    const handleClick = (e) => {
-      const rect = canvas.getBoundingClientRect()
-      const clickX = e.clientX - rect.left
-      const clickY = e.clientY - rect.top
-      
-      // Check if clicked on a node
-      nodes.forEach(node => {
-        const projected = project3D(node, canvas.width / 2, canvas.height / 2)
-        const distance = Math.sqrt(
-          Math.pow(clickX - projected.x, 2) + Math.pow(clickY - projected.y, 2)
-        )
-        
-        if (distance < node.size) {
-          setSelectedNode(node)
-          onInteraction && onInteraction('nodeClick', node)
-        }
-      })
-    }
-    
-    canvas.addEventListener('mousemove', handleMouseMove)
-    canvas.addEventListener('mousedown', handleMouseDown)
-    canvas.addEventListener('mouseup', handleMouseUp)
-    canvas.addEventListener('click', handleClick)
-    canvas.style.cursor = 'grab'
-    
-    // 3D projection function
-    const project3D = (point, centerX, centerY) => {
-      const distance = 400
-      const rotatedX = point.x * Math.cos(rotation.y) - point.z * Math.sin(rotation.y)
-      const rotatedZ = point.x * Math.sin(rotation.y) + point.z * Math.cos(rotation.y)
-      const rotatedY = point.y * Math.cos(rotation.x) - rotatedZ * Math.sin(rotation.x)
-      const finalZ = point.y * Math.sin(rotation.x) + rotatedZ * Math.cos(rotation.x)
-      
-      const scale = distance / (distance + finalZ)
-      return {
-        x: centerX + rotatedX * scale,
-        y: centerY + rotatedY * scale,
-        scale: scale
-      }
-    }
-    
-    // Animation loop
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio)
-      
-      const centerX = canvas.width / 2 / window.devicePixelRatio
-      const centerY = canvas.height / 2 / window.devicePixelRatio
-      
-      // Auto-rotation when not dragging
-      if (isAnimating && !isDragging) {
-        rotation.y += 0.005
-        rotation.x += 0.002
+      if (isAnimating) {
+        setRotation(prev => prev + 0.5)
       }
-      
-      // Draw connections first
-      connections.forEach(conn => {
-        const fromNode = nodes.find(n => n.id === conn.from)
-        const toNode = nodes.find(n => n.id === conn.to)
-        
-        if (fromNode && toNode) {
-          const fromProj = project3D(fromNode, centerX, centerY)
-          const toProj = project3D(toNode, centerX, centerY)
-          
-          ctx.beginPath()
-          ctx.moveTo(fromProj.x, fromProj.y)
-          ctx.lineTo(toProj.x, toProj.y)
-          ctx.strokeStyle = conn.color + Math.floor(conn.strength * 255).toString(16).padStart(2, '0')
-          ctx.lineWidth = conn.strength * 3
-          ctx.stroke()
-        }
-      })
-      
-      // Sort nodes by z-depth for proper rendering
-      const sortedNodes = [...nodes].sort((a, b) => {
-        const aZ = a.x * Math.sin(rotation.y) + a.z * Math.cos(rotation.y)
-        const bZ = b.x * Math.sin(rotation.y) + b.z * Math.cos(rotation.y)
-        return bZ - aZ
-      })
-      
-      // Draw nodes
-      sortedNodes.forEach(node => {
-        const projected = project3D(node, centerX, centerY)
-        const size = node.size * projected.scale
-        
-        // Node shadow
-        ctx.beginPath()
-        ctx.arc(projected.x + 2, projected.y + 2, size, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'
-        ctx.fill()
-        
-        // Node body
-        ctx.beginPath()
-        ctx.arc(projected.x, projected.y, size, 0, Math.PI * 2)
-        
-        // Gradient fill
-        const gradient = ctx.createRadialGradient(
-          projected.x - size/3, projected.y - size/3, 0,
-          projected.x, projected.y, size
-        )
-        gradient.addColorStop(0, node.color + 'ff')
-        gradient.addColorStop(1, node.color + '80')
-        
-        ctx.fillStyle = gradient
-        ctx.fill()
-        
-        // Node border
-        ctx.strokeStyle = node.id === selectedNode?.id ? '#fff' : node.color
-        ctx.lineWidth = node.id === selectedNode?.id ? 3 : 1
-        ctx.stroke()
-        
-        // Node label
-        if (size > 10) {
-          ctx.fillStyle = '#fff'
-          ctx.font = `${Math.min(size/2, 12)}px Arial`
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillText(node.label, projected.x, projected.y)
-        }
-        
-        // Hover effect
-        const distance = Math.sqrt(
-          Math.pow(mousePos.x - projected.x, 2) + Math.pow(mousePos.y - projected.y, 2)
-        )
-        
-        if (distance < size && !isDragging) {
-          // Tooltip
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-          ctx.fillRect(mousePos.x + 10, mousePos.y - 30, 120, 25)
-          ctx.fillStyle = '#fff'
-          ctx.font = '12px Arial'
-          ctx.textAlign = 'left'
-          ctx.fillText(node.label, mousePos.x + 15, mousePos.y - 15)
-          
-          if (node.type === 'criteria' && node.scores) {
-            ctx.fillText(`Scores: ${node.scores[0]}, ${node.scores[1]}`, mousePos.x + 15, mousePos.y - 5)
-          }
-        }
-      })
-      
-      // Performance info
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
-      ctx.font = '10px Arial'
-      ctx.textAlign = 'left'
-      ctx.fillText(`Nodes: ${nodes.length} | Connections: ${connections.length}`, 10, 20)
-      
       animationRef.current = requestAnimationFrame(animate)
     }
     
     animate()
     
     return () => {
-      window.removeEventListener('resize', resizeCanvas)
-      canvas.removeEventListener('mousemove', handleMouseMove)
-      canvas.removeEventListener('mousedown', handleMouseDown)
-      canvas.removeEventListener('mouseup', handleMouseUp)
-      canvas.removeEventListener('click', handleClick)
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [comparison, viewMode, isAnimating, selectedNode])
+  }, [comparison, isAnimating])
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen)
   }
 
   const resetView = () => {
-    // Reset rotation and zoom
+    setRotation(0)
     setSelectedNode(null)
   }
 
   const exportVisualization = () => {
-    if (canvasRef.current) {
-      const link = document.createElement('a')
-      link.download = 'referee-3d-visualization.png'
-      link.href = canvasRef.current.toDataURL()
-      link.click()
+    // Create a simple export
+    const exportData = {
+      comparison: comparison.options,
+      analysis: comparison.analysis,
+      timestamp: new Date().toISOString()
     }
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'referee-3d-analysis.json'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
-  if (!comparison) return null
+  if (!comparison) {
+    return (
+      <div className="visualization-3d">
+        <div className="no-data-message">
+          <div className="no-data-icon">🌐</div>
+          <h3>3D Decision Space</h3>
+          <p>Start a comparison to see your decision visualized in immersive 3D space</p>
+        </div>
+      </div>
+    )
+  }
+
+  const renderNodes = () => {
+    const nodes = []
+    
+    // Main option nodes
+    comparison.options.forEach((option, index) => {
+      const angle = (index * Math.PI) + (rotation * Math.PI / 180)
+      const x = Math.cos(angle) * 150 + 250
+      const y = Math.sin(angle) * 100 + 200
+      const scale = 1 + Math.sin(rotation * Math.PI / 180) * 0.2
+      
+      nodes.push(
+        <div
+          key={`option-${index}`}
+          className={`node option-node ${selectedNode === `option-${index}` ? 'selected' : ''}`}
+          style={{
+            left: `${x}px`,
+            top: `${y}px`,
+            transform: `scale(${scale}) rotateY(${rotation}deg)`,
+            background: index === 0 ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'linear-gradient(135deg, #ff6b6b, #ee5a24)'
+          }}
+          onClick={() => {
+            setSelectedNode(`option-${index}`)
+            onInteraction && onInteraction('nodeClick', { type: 'option', data: option })
+          }}
+        >
+          <div className="node-content">
+            <div className="node-title">{option}</div>
+            <div className="node-type">Option {index + 1}</div>
+          </div>
+          <div className="node-glow"></div>
+        </div>
+      )
+    })
+    
+    // Criteria nodes
+    comparison.analysis.forEach((item, index) => {
+      const angle = (index * 2 * Math.PI / comparison.analysis.length) + (rotation * Math.PI / 180 * 0.5)
+      const radius = 120 + Math.sin(rotation * Math.PI / 180 + index) * 20
+      const x = Math.cos(angle) * radius + 250
+      const y = Math.sin(angle) * radius + 200
+      const z = Math.sin(angle * 2 + rotation * Math.PI / 180) * 30
+      const scale = 0.8 + (z + 30) / 60 * 0.4
+      
+      nodes.push(
+        <div
+          key={`criteria-${index}`}
+          className={`node criteria-node ${selectedNode === `criteria-${index}` ? 'selected' : ''}`}
+          style={{
+            left: `${x}px`,
+            top: `${y}px`,
+            transform: `scale(${scale}) rotateX(${z}deg)`,
+            zIndex: Math.floor(z + 30),
+            opacity: 0.7 + scale * 0.3
+          }}
+          onClick={() => {
+            setSelectedNode(`criteria-${index}`)
+            onInteraction && onInteraction('nodeClick', { type: 'criteria', data: item })
+          }}
+        >
+          <div className="node-content">
+            <div className="node-title">{item.criterion}</div>
+            <div className="node-scores">
+              <span>{item.option1Score}</span>
+              <span>{item.option2Score}</span>
+            </div>
+          </div>
+          <div className="connection-lines">
+            <div className="connection-line" style={{ 
+              transform: `rotate(${Math.atan2(200 - y, 250 - x) * 180 / Math.PI}deg)`,
+              width: `${Math.sqrt(Math.pow(250 - x, 2) + Math.pow(200 - y, 2))}px`,
+              opacity: item.option1Score / 5
+            }}></div>
+          </div>
+        </div>
+      )
+    })
+    
+    return nodes
+  }
 
   return (
     <div className={`visualization-3d ${isFullscreen ? 'fullscreen' : ''}`}>
       <div className="visualization-header">
-        <h3>3D Decision Space</h3>
+        <h3>🌐 3D Decision Space</h3>
         <div className="visualization-controls">
           <select 
             value={viewMode} 
@@ -305,14 +167,14 @@ const Advanced3DVisualization = ({ comparison, onInteraction }) => {
             onClick={() => setIsAnimating(!isAnimating)}
             title={isAnimating ? 'Pause animation' : 'Start animation'}
           >
-            {isAnimating ? '⏸️' : '▶️'}
+            {isAnimating ? <Pause size={16} /> : <Play size={16} />}
           </button>
           
           <button className="control-btn" onClick={resetView} title="Reset view">
             <RotateCcw size={16} />
           </button>
           
-          <button className="control-btn" onClick={exportVisualization} title="Export image">
+          <button className="control-btn" onClick={exportVisualization} title="Export data">
             <Download size={16} />
           </button>
           
@@ -322,17 +184,53 @@ const Advanced3DVisualization = ({ comparison, onInteraction }) => {
         </div>
       </div>
       
-      <div className="visualization-container">
-        <canvas ref={canvasRef} className="visualization-canvas" />
+      <div className="visualization-container" ref={containerRef}>
+        <div className="visualization-space">
+          {renderNodes()}
+          
+          {/* Background grid */}
+          <div className="background-grid" style={{ transform: `rotateX(${rotation * 0.2}deg) rotateY(${rotation * 0.3}deg)` }}>
+            {[...Array(10)].map((_, i) => (
+              <div key={`grid-h-${i}`} className="grid-line horizontal" style={{ top: `${i * 10}%` }} />
+            ))}
+            {[...Array(10)].map((_, i) => (
+              <div key={`grid-v-${i}`} className="grid-line vertical" style={{ left: `${i * 10}%` }} />
+            ))}
+          </div>
+          
+          {/* Floating particles */}
+          <div className="floating-particles">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={`particle-${i}`}
+                className="particle"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${3 + Math.random() * 4}s`
+                }}
+              />
+            ))}
+          </div>
+        </div>
         
         {selectedNode && (
           <div className="node-details">
-            <h4>{selectedNode.label}</h4>
-            <p>Type: {selectedNode.type}</p>
-            {selectedNode.scores && (
-              <div className="node-scores">
-                <div>Option 1: {selectedNode.scores[0]}/5</div>
-                <div>Option 2: {selectedNode.scores[1]}/5</div>
+            <h4>Node Details</h4>
+            {selectedNode.startsWith('option') ? (
+              <div>
+                <p><strong>Type:</strong> Decision Option</p>
+                <p><strong>Name:</strong> {comparison.options[parseInt(selectedNode.split('-')[1])]}</p>
+              </div>
+            ) : (
+              <div>
+                <p><strong>Type:</strong> Evaluation Criteria</p>
+                <p><strong>Criterion:</strong> {comparison.analysis[parseInt(selectedNode.split('-')[1])].criterion}</p>
+                <div className="scores">
+                  <div>Option 1: {comparison.analysis[parseInt(selectedNode.split('-')[1])].option1Score}/5</div>
+                  <div>Option 2: {comparison.analysis[parseInt(selectedNode.split('-')[1])].option2Score}/5</div>
+                </div>
               </div>
             )}
           </div>
@@ -341,28 +239,30 @@ const Advanced3DVisualization = ({ comparison, onInteraction }) => {
       
       <div className="visualization-legend">
         <div className="legend-item">
-          <div className="legend-color" style={{ background: '#667eea' }}></div>
+          <div className="legend-color option1"></div>
           <span>{comparison.options[0]}</span>
         </div>
         <div className="legend-item">
-          <div className="legend-color" style={{ background: '#764ba2' }}></div>
+          <div className="legend-color option2"></div>
           <span>{comparison.options[1]}</span>
         </div>
         <div className="legend-item">
-          <div className="legend-color" style={{ background: 'linear-gradient(45deg, #667eea, #764ba2)' }}></div>
-          <span>Criteria Connections</span>
+          <div className="legend-color criteria"></div>
+          <span>Evaluation Criteria</span>
         </div>
       </div>
       
       <style jsx>{`
         .visualization-3d {
-          background: white;
-          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(20px);
+          border-radius: 20px;
           padding: 24px;
           margin: 20px 0;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-          border: 1px solid #e2e8f0;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           position: relative;
+          min-height: 600px;
         }
         
         .visualization-3d.fullscreen {
@@ -398,47 +298,203 @@ const Advanced3DVisualization = ({ comparison, onInteraction }) => {
         }
         
         .view-mode-select {
-          padding: 6px 12px;
+          padding: 8px 12px;
           border: 1px solid #e2e8f0;
-          border-radius: 6px;
+          border-radius: 8px;
           background: white;
           font-size: 14px;
         }
         
         .control-btn {
-          width: 36px;
-          height: 36px;
+          width: 40px;
+          height: 40px;
           border: 1px solid #e2e8f0;
-          border-radius: 6px;
+          border-radius: 8px;
           background: white;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
         }
         
         .control-btn:hover {
           background: #f7fafc;
           border-color: #667eea;
+          transform: translateY(-2px);
         }
         
         .visualization-container {
           position: relative;
           height: 500px;
           background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-          border-radius: 12px;
+          border-radius: 16px;
           overflow: hidden;
+          perspective: 1000px;
         }
         
         .visualization-3d.fullscreen .visualization-container {
           height: calc(100vh - 120px);
         }
         
-        .visualization-canvas {
+        .visualization-space {
+          position: relative;
           width: 100%;
           height: 100%;
-          display: block;
+          transform-style: preserve-3d;
+        }
+        
+        .background-grid {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          opacity: 0.1;
+          pointer-events: none;
+        }
+        
+        .grid-line {
+          position: absolute;
+          background: #667eea;
+        }
+        
+        .grid-line.horizontal {
+          width: 100%;
+          height: 1px;
+        }
+        
+        .grid-line.vertical {
+          width: 1px;
+          height: 100%;
+        }
+        
+        .floating-particles {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+        }
+        
+        .particle {
+          position: absolute;
+          width: 4px;
+          height: 4px;
+          background: rgba(102, 126, 234, 0.6);
+          border-radius: 50%;
+          animation: float-3d 5s infinite ease-in-out;
+        }
+        
+        .node {
+          position: absolute;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transform-style: preserve-3d;
+        }
+        
+        .option-node {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+          position: relative;
+        }
+        
+        .criteria-node {
+          width: 80px;
+          height: 80px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #48bb78, #38a169);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 12px;
+          text-align: center;
+          box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
+        }
+        
+        .node:hover {
+          transform: scale(1.1) rotateY(10deg);
+          z-index: 100;
+        }
+        
+        .node.selected {
+          transform: scale(1.2);
+          box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+          z-index: 101;
+        }
+        
+        .node-content {
+          text-align: center;
+          z-index: 2;
+          position: relative;
+        }
+        
+        .node-title {
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+        
+        .node-type {
+          font-size: 10px;
+          opacity: 0.8;
+        }
+        
+        .node-scores {
+          display: flex;
+          gap: 8px;
+          font-size: 10px;
+        }
+        
+        .node-glow {
+          position: absolute;
+          top: -4px;
+          left: -4px;
+          right: -4px;
+          bottom: -4px;
+          border-radius: inherit;
+          background: inherit;
+          opacity: 0.5;
+          filter: blur(8px);
+          z-index: -1;
+        }
+        
+        .connection-lines {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          pointer-events: none;
+        }
+        
+        .connection-line {
+          position: absolute;
+          height: 2px;
+          background: linear-gradient(90deg, rgba(102, 126, 234, 0.6), transparent);
+          transform-origin: left center;
+        }
+        
+        .no-data-message {
+          text-align: center;
+          padding: 80px 20px;
+          color: #4a5568;
+        }
+        
+        .no-data-icon {
+          font-size: 4rem;
+          margin-bottom: 20px;
+        }
+        
+        .no-data-message h3 {
+          margin-bottom: 12px;
+          color: #2d3748;
         }
         
         .node-details {
@@ -447,36 +503,40 @@ const Advanced3DVisualization = ({ comparison, onInteraction }) => {
           right: 20px;
           background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(10px);
-          padding: 16px;
+          padding: 20px;
           border-radius: 12px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
           min-width: 200px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         .node-details h4 {
-          margin: 0 0 8px 0;
+          margin: 0 0 12px 0;
           color: #2d3748;
         }
         
         .node-details p {
-          margin: 0 0 8px 0;
-          color: #718096;
+          margin: 8px 0;
+          color: #4a5568;
           font-size: 14px;
         }
         
-        .node-scores {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+        .scores {
+          margin-top: 12px;
+        }
+        
+        .scores div {
+          padding: 4px 0;
           font-size: 14px;
+          color: #2d3748;
         }
         
         .visualization-legend {
           display: flex;
           justify-content: center;
           gap: 24px;
-          margin-top: 16px;
-          padding-top: 16px;
+          margin-top: 20px;
+          padding-top: 20px;
           border-top: 1px solid #e2e8f0;
         }
         
@@ -495,9 +555,37 @@ const Advanced3DVisualization = ({ comparison, onInteraction }) => {
           border: 1px solid #e2e8f0;
         }
         
+        .legend-color.option1 {
+          background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        
+        .legend-color.option2 {
+          background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+        
+        .legend-color.criteria {
+          background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+        
+        @keyframes float-3d {
+          0%, 100% {
+            transform: translateY(0px) translateX(0px) rotateZ(0deg);
+            opacity: 0.6;
+          }
+          33% {
+            transform: translateY(-20px) translateX(10px) rotateZ(120deg);
+            opacity: 1;
+          }
+          66% {
+            transform: translateY(10px) translateX(-10px) rotateZ(240deg);
+            opacity: 0.8;
+          }
+        }
+        
         @media (max-width: 768px) {
           .visualization-controls {
             flex-wrap: wrap;
+            gap: 4px;
           }
           
           .visualization-container {
@@ -509,6 +597,18 @@ const Advanced3DVisualization = ({ comparison, onInteraction }) => {
             top: auto;
             right: auto;
             margin-top: 16px;
+          }
+          
+          .option-node {
+            width: 80px;
+            height: 80px;
+            font-size: 12px;
+          }
+          
+          .criteria-node {
+            width: 60px;
+            height: 60px;
+            font-size: 10px;
           }
         }
       `}</style>
